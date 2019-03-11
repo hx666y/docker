@@ -1,0 +1,41 @@
+FROM centos:7
+
+LABEL maintainer="HongX <hx666y@163.com>"
+
+RUN CONFIG="\
+        --prefix=/usr/local/php --with-fpm-user=www --with-fpm-group=www \
+	--with-config-file-path=/usr/local/php/etc \
+	--enable-fpm --enable-opcache \
+	--with-mysqli --with-pdo-mysql --with-mhash \
+	--with-openssl --with-zlib --with-curl --with-gd \
+	--with-jpeg-dir --with-png-dir --with-freetype-dir \
+	--enable-mbstring --disable-phar \
+" \
+&& groupadd www \
+&& useradd -s /sbin/nologin -g www www \
+&& yum install epel-release -y \
+&& yum install -y gcc gcc-c++ make gd-devel libxml2-devel \
+	libcurl-devel libjpeg-devel libpng-devel openssl-devel \
+	libmcrypt-devel libxslt-devel libtidy-devel autoconf \
+	iproute net-tools telnet wget curl \
+&& yum clean all \
+&& rm -rf /var/cache/yum/* \
+&& cd /usr/local/src/ && wget http://docs.php.net/distributions/php-7.3.3.tar.gz \
+&& tar zxf php-7.3.3.tar.gz && cd php-7.3.3 \
+&& ./configure ${CONFIG} \
+&& make -j2 \
+&& make install \
+&& cp php.ini-production /usr/local/php/etc/php.ini \
+&& cp sapi/fpm/php-fpm.conf /usr/local/php/etc/php-fpm.conf \
+&& sed -i "99a \daemonize = no" /usr/local/php/etc/php-fpm.conf \
+&& mkdir /usr/local/php/log \
+&& cd / && rm -rf /usr/local/src/* \
+&& ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+
+ENV PATH $PATH:/usr/local/php/sbin
+COPY php.ini /usr/local/php/etc/
+COPY php-fpm.conf /usr/local/php/etc/
+WORKDIR /usr/local/php
+EXPOSE 9000
+CMD ["php-fpm"]
+
